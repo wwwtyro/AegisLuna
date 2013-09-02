@@ -1,4 +1,4 @@
-from math import pi, sin, cos
+from math import pi, sin, cos, sqrt
 import numpy
 import perlin
 import pyglet
@@ -141,3 +141,16 @@ def buildAsteroid(resolution):
             uvs.extend((u1, v1))
             uvs.extend((u2, v2))
     return pyglet.graphics.vertex_list(len(vertices)/3, ('v3f', vertices), ('n3f', normals), ('t2f', uvs))
+
+def buildCircle(color):
+    vertices = []
+    colors = []
+    for theta in range(360):
+        t = 2*pi * theta/360.0
+        vertices.extend([cos(t), 0, sin(t)])
+        colors.extend(color)
+    return pyglet.graphics.vertex_list(len(vertices)/3, ('v3f', vertices), ('c4f', colors))
+
+
+
+
