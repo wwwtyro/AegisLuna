@@ -48,7 +48,7 @@ class Window(pyglet.window.Window):
             roid.radius = random.random() * 10 + 15
             roid.position = numpy.random.normal(size=3)
             roid.position /= numpy.linalg.norm(roid.position)
-            roid.position *= random.random() * 1000 + 150
+            roid.position *= random.random() * 2000 + 1000
             self.roids.append(roid)
         self.earthTexture = pyglet.image.load("earth.png").get_mipmapped_texture()
         self.moonTexture = pyglet.image.load("moon.png").get_mipmapped_texture()
@@ -112,6 +112,27 @@ class Window(pyglet.window.Window):
             glBindTexture(GL_TEXTURE_2D, self.roidTexture.id)
             roid.geometry.draw(GL_TRIANGLES)
 
+        # Indicator lines
+        glLoadIdentity()
+        glDisable(GL_LIGHTING)
+        glDisable(GL_TEXTURE_2D)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glLineWidth(4.0)
+        # Draw indicator line to Earth
+        pyglet.graphics.draw(2, GL_LINES, 
+            ('v3f', (self.moon.position[0], self.moon.position[1], self.moon.position[2],
+                self.earth.position[0], self.earth.position[1], self.earth.position[2])),
+            ('c4f', (0.5,0.5,1,0.5, 0.5,0.5,1,0.5)))
+        # Draw indicator lines to Roids
+        for roid in self.roids:
+            pyglet.graphics.draw(2, GL_LINES, 
+                ('v3f', (self.moon.position[0], self.moon.position[1], self.moon.position[2],
+                    roid.position[0], roid.position[1], roid.position[2])),
+                ('c4f', (1,0,0,0.25, 1,0,0,0.25)))
+        glEnable(GL_TEXTURE_2D)
+        glEnable(GL_LIGHTING)
+
         # Draw Space
         glLoadIdentity()
         glTranslatef(campos[0], campos[1], campos[2])
@@ -128,30 +149,30 @@ class Window(pyglet.window.Window):
         dt = 1.0
         self.earth.rotation += 0.1 * dt
         self.moon.rotation += 0.1 * dt
-        dirForce = 0.0
-        if self.accelerate:
-            dirForce = 0.1 * -self.camera.forward
+        dirForce = -self.moon.velocity * 0.05
+        if key.W in self.keys:
+            dirForce = 0.2 * -self.camera.forward
+        if key.S in self.keys:
+            dirForce = 0.2 * self.camera.forward
+        if key.A in self.keys:
+            dirForce = 0.2 * -self.camera.right
+        if key.D in self.keys:
+            dirForce = 0.2 * self.camera.right
         gforce = self.earth.position - self.moon.position
-        gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
-        if self.decelerate:
-            self.moon.velocity *= 0.9
-            gforce = 0.0
-            dirForce = 0.0
+        gforce = 0# 0.025 * gforce/numpy.linalg.norm(gforce)
         self.moon.velocity += (gforce + dirForce) * dt
         self.moon.position += self.moon.velocity * dt
         for roid in self.roids:
             gforce = self.earth.position - roid.position
             gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
             roid.velocity += gforce * dt
+            if numpy.linalg.norm(roid.velocity) > 1.0:
+                roid.velocity = 1.0 * roid.velocity/numpy.linalg.norm(roid.velocity)
             roid.position += roid.velocity * dt
-            roid.rotation += 1.0 * dt
+            roid.rotation += 4.0 * dt
         return pyglet.event.EVENT_HANDLED
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if button == 1:
-            self.accelerate = True
-        if button == 4:
-            self.decelerate = True
         return pyglet.event.EVENT_HANDLED
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
@@ -159,18 +180,16 @@ class Window(pyglet.window.Window):
         return pyglet.event.EVENT_HANDLED
 
     def on_mouse_release(self, x, y, button, modifiers):
-        if button == 1:
-            self.accelerate = False
-        if button == 4:
-            self.decelerate = False
         return pyglet.event.EVENT_HANDLED
 
     def on_key_press(self, symbol, modifiers):
         if symbol == pyglet.window.key.ESCAPE:
             sys.exit()
+        self.keys[symbol] = True
         return pyglet.event.EVENT_HANDLED
 
     def on_key_release(self, symbol, modifiers):
+        del self.keys[symbol]
         return pyglet.event.EVENT_HANDLED
 
     def on_mouse_motion(self, x, y, dx, dy):
