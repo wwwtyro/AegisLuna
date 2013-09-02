@@ -1,5 +1,6 @@
 
 import sys
+import random
 
 import numpy
 import pyglet
@@ -29,26 +30,36 @@ class Window(pyglet.window.Window):
 
         super(Window, self).__init__(*args, **kwargs)
         self.set_exclusive_mouse(True)
+        self.set_location(self.screen.width/2 - self.width/2, self.screen.height/2 - self.height/2)
         self.keys = {}
         self.accelerate = False
         self.decelerate = False
+        print "building sphere geometry..."
         self.sphereGeometry = buildSphere(32)
         self.earth = Planetoid(self.sphereGeometry)
         self.earth.radius = 100.0
         self.moon = Planetoid(self.sphereGeometry)
         self.moon.radius = 27.0
         self.moon.position[0] = 640.0
+        self.roids = []
+        roidGeometry = buildAsteroid(32)
+        for i in range(10):
+            roid = Planetoid(roidGeometry)
+            roid.radius = random.random() * 10 + 15
+            roid.position = numpy.random.normal(size=3)
+            roid.position /= numpy.linalg.norm(roid.position)
+            roid.position *= random.random() * 1000 + 150
+            self.roids.append(roid)
         self.earthTexture = pyglet.image.load("earth.png").get_mipmapped_texture()
         self.moonTexture = pyglet.image.load("moon.png").get_mipmapped_texture()
         self.spaceTexture = pyglet.image.load("space.png").get_mipmapped_texture()
-        self.rockTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
+        self.roidTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
         self.camera = Camera()
         pyglet.clock.schedule_interval(self.update, 1/60.0)
         glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glEnable(GL_TEXTURE_2D)
         glShadeModel(GL_SMOOTH)
-        # glShadeModel(GL_FLAT)
         glEnable(GL_LIGHTING)
         glEnable(GL_LIGHT0)
         glLightfv(GL_LIGHT0, GL_POSITION, vec(1000, 0, 0, 0))
@@ -92,6 +103,15 @@ class Window(pyglet.window.Window):
         glBindTexture(GL_TEXTURE_2D, self.moonTexture.id)
         self.moon.geometry.draw(GL_TRIANGLES)
 
+        # Draw Roids
+        for roid in self.roids:
+            glLoadIdentity()
+            glTranslatef(roid.position[0], roid.position[1], roid.position[2])
+            glScalef(roid.radius, roid.radius, roid.radius)
+            glRotatef(roid.rotation, 0, 1, 0)
+            glBindTexture(GL_TEXTURE_2D, self.roidTexture.id)
+            roid.geometry.draw(GL_TRIANGLES)
+
         # Draw Space
         glLoadIdentity()
         glTranslatef(campos[0], campos[1], campos[2])
@@ -102,7 +122,29 @@ class Window(pyglet.window.Window):
         self.sphereGeometry.draw(GL_TRIANGLES)
         glCullFace(GL_BACK)
         glEnable(GL_LIGHTING)
+        return pyglet.event.EVENT_HANDLED
 
+    def update(self, dt):
+        dt = 1.0
+        self.earth.rotation += 0.1 * dt
+        self.moon.rotation += 0.1 * dt
+        dirForce = 0.0
+        if self.accelerate:
+            dirForce = 0.1 * -self.camera.forward
+        gforce = self.earth.position - self.moon.position
+        gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
+        if self.decelerate:
+            self.moon.velocity *= 0.9
+            gforce = 0.0
+            dirForce = 0.0
+        self.moon.velocity += (gforce + dirForce) * dt
+        self.moon.position += self.moon.velocity * dt
+        for roid in self.roids:
+            gforce = self.earth.position - roid.position
+            gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
+            roid.velocity += gforce * dt
+            roid.position += roid.velocity * dt
+            roid.rotation += 1.0 * dt
         return pyglet.event.EVENT_HANDLED
 
     def on_mouse_press(self, x, y, button, modifiers):
@@ -144,27 +186,8 @@ class Window(pyglet.window.Window):
         return pyglet.event.EVENT_HANDLED
 
 
-    def update(self, dt):
-        dt = 1.0
-        self.earth.rotation += 0.1 * dt
-        self.moon.rotation += 0.1 * dt
-        dirForce = 0.0
-        if self.accelerate:
-            dirForce = 0.1 * -self.camera.forward
-        gforce = self.earth.position - self.moon.position
-        gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
-        if self.decelerate:
-            self.moon.velocity *= 0.9
-            gforce = 0.0
-            dirForce = 0.0
-        self.moon.velocity += (gforce + dirForce) * dt
-        self.moon.position += self.moon.velocity * dt
-
-        return pyglet.event.EVENT_HANDLED
-
 
 # window = Window(fullscreen=True)
 window = Window(fullscreen=False, width=1280, height=800)
-window.set_location(window.screen.width/2 - window.width/2, window.screen.height/2 - window.height/2)
 pyglet.app.run()
 
