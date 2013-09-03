@@ -2,6 +2,7 @@
 import sys
 
 import pyglet
+from pyglet.gl import *
 
 from screens import *
 from game import Game
