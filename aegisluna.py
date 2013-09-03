@@ -25,7 +25,7 @@ class AegisLuna(pyglet.window.Window):
     def prepareAssets(self):
         self.boomSound = pyglet.resource.media('boom.wav', streaming=False)
         self.bounceSound = pyglet.resource.media('bounce.wav', streaming=False)
-        self.spaceSound = pyglet.resource.media('space.wav', streaming=True)
+        self.spaceSound = pyglet.resource.media('space.wav', streaming=False)
         self.spacePlayer = None
 
     def boom(self):
@@ -41,6 +41,7 @@ class AegisLuna(pyglet.window.Window):
             pass
 
     def spaceOn(self):
+        pass
         if self.spacePlayer is None:
             self.spacePlayer = pyglet.media.Player()
             self.spacePlayer.queue(self.spaceSound)
