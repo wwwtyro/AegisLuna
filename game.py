@@ -1,12 +1,12 @@
 
 import sys
 import random
-import time
 
 import numpy
 import pyglet
 from pyglet.gl import *
 from pyglet.window import key
+from pyglet.media.drivers.alsa import ALSAException
 
 from state import State
 from util import *
@@ -33,6 +33,7 @@ class Camera:
 class Game(State):
 
     def __init__(self, al):
+        self.bounceSound = pyglet.resource.media('bounce.wav', streaming=False)
         self.al = al
         self.keys = {}
         self.tick = 0.0
@@ -53,16 +54,12 @@ class Game(State):
         self.roidTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
         self.roidCircle = buildCircle([1.0,1.0,0.0,0.5])
         self.camera = Camera()
-        self.roidLabel = pyglet.text.Label('0 asteroids',
-                                            font_size=18, bold=True,
-                                            x=self.al.width - 4.0, y=self.al.height, color=(255,0,0,255),
-                                            anchor_x='right', anchor_y='top')        
-        self.scoreLabel = pyglet.text.Label('0 points',
-                                            font_size=18, bold=True,
-                                            x=4.0, y=self.al.height, color=(255,255,0,255),
-                                            anchor_x='left', anchor_y='top')        
-        self.score = 0
-        self.time0 = time.time()
+        self.scoreLabel = pyglet.text.Label('', font_size=18, bold=True, x=4.0, y=self.al.height, 
+                                            color=(255,255,255,128), anchor_x='left', anchor_y='top')      
+        self.earthIntegrity = 100.0
+        self.integrityLabel = pyglet.text.Label('', font_size=18, bold=True, x=self.al.width-4.0, y=4.0, 
+                                                color=(255,0,0,128), anchor_x='right', anchor_y='bottom')      
+        self.total_time = 0.0
 
     def addAsteroid(self):
         roid = Planetoid(self.roidGeometry)
@@ -108,7 +105,8 @@ class Game(State):
         glLoadIdentity()
         glTranslatef(self.earth.position[0], 0, self.earth.position[1])
         glScalef(self.earth.radius, self.earth.radius, self.earth.radius)
-        glRotatef(self.earth.rotation, self.earth.rotation_axis[0], self.earth.rotation_axis[1], self.earth.rotation_axis[2])
+        glRotatef(self.earth.rotation, self.earth.rotation_axis[0], 
+                  self.earth.rotation_axis[1], self.earth.rotation_axis[2])
         glBindTexture(GL_TEXTURE_2D, self.earthTexture.id)
         self.earth.geometry.draw(GL_TRIANGLES)
 
@@ -116,7 +114,8 @@ class Game(State):
         glLoadIdentity()
         glTranslatef(self.moon.position[0], 0, self.moon.position[1])
         glScalef(self.moon.radius, self.moon.radius, self.moon.radius)
-        glRotatef(self.moon.rotation, self.moon.rotation_axis[0], self.moon.rotation_axis[1], self.moon.rotation_axis[2])
+        glRotatef(self.moon.rotation, self.moon.rotation_axis[0], 
+                  self.moon.rotation_axis[1], self.moon.rotation_axis[2])
         glBindTexture(GL_TEXTURE_2D, self.moonTexture.id)
         self.moon.geometry.draw(GL_TRIANGLES)
 
@@ -148,17 +147,20 @@ class Game(State):
         gluOrtho2D(0, self.al.width, 0, self.al.height)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        self.scoreLabel.text = "%d points" % self.score
+        self.scoreLabel.text = "%d people saved" % int(self.total_time * 100)
         self.scoreLabel.draw()
-        self.roidLabel.text = "%d asteroids" % len(self.roids)
-        self.roidLabel.draw()
+        self.integrityLabel.color = (int(255*(100-self.earthIntegrity)/100.0), 
+                                     int(255*(self.earthIntegrity)/100.0), 0, 128)
+        self.integrityLabel.text = "Earth Integrity: %d%%" % int(self.earthIntegrity)
+        self.integrityLabel.draw()
         glEnable(GL_LIGHTING)
 
         return pyglet.event.EVENT_HANDLED
 
     def update(self, dt):
-        self.score += dt * len(self.roids)
-        numroids = int((time.time() - self.time0)/10) + 3
+        self.al.spacePlayer.play()
+        self.total_time += dt
+        numroids = int(self.total_time/10) + 3
         while len(self.roids) < numroids:
             self.addAsteroid()
         dt = 1.0
@@ -179,20 +181,34 @@ class Game(State):
             dirForce -= right * speed
         if key.D in self.keys:
             dirForce += right * speed
-        gforce = self.earth.position - self.moon.position
-        gforce = 0#0.1 * gforce/numpy.linalg.norm(gforce)
-        self.moon.velocity += (gforce + dirForce) * dt
+        self.moon.velocity += dirForce * dt
         self.moon.position += self.moon.velocity * dt
+        emag = numpy.linalg.norm(self.earth.position - self.moon.position)
+        if emag < self.earth.radius + self.moon.radius:
+            self.al.activateMoonCollision()
+            self.al.boomSound.play()
+            self.al.spacePlayer.pause()
+            return
         for roid in self.roids[:]:
             mvec = roid.position - self.moon.position
             mmag = numpy.linalg.norm(mvec)
             mdir = mvec / mmag
             if mmag*0.9 < self.moon.radius + roid.radius:
                 mforce = mdir * numpy.linalg.norm(self.moon.velocity) * 32/roid.radius
+                try:
+                    self.bounceSound.play()
+                except ALSAException:
+                    pass # "File descriptor in bad state" wat
             else:
                 mforce = mdir * 0
             emag = numpy.linalg.norm(self.earth.position - roid.position)
             if emag < self.earth.radius + roid.radius:
+                self.earthIntegrity -= roid.radius/2.0
+                self.al.boomSound.play()
+                if int(self.earthIntegrity) < 1:
+                    self.al.activateApocalypse()
+                    self.al.spacePlayer.pause()
+                    return
                 self.roids.remove(roid)
                 continue
             gforce = self.earth.position - roid.position

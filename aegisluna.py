@@ -10,18 +10,39 @@ class AegisLuna(pyglet.window.Window):
 
     def __init__(self, *args, **kwargs):
         super(AegisLuna, self).__init__(*args, **kwargs)
+        self.prepareAssets()
         self.set_exclusive_mouse(True)
         self.set_location(self.screen.width/2 - self.width/2, self.screen.height/2 - self.height/2)
         self.intro = Intro(self)
+        self.moonCollision = MoonCollision(self)
+        self.apocalypse = Apocalypse(self)
         self.game = Game(self)
         self.currentState = None
         pyglet.clock.schedule_interval(self.update, 1/60.0)
         self.activateIntro()
 
+    def prepareAssets(self):
+        self.boomSound = pyglet.resource.media('boom.wav', streaming=False)
+        spaceSound = pyglet.resource.media('space.wav', streaming=False)
+        self.spacePlayer = pyglet.media.Player()
+        self.spacePlayer.queue(spaceSound)
+        self.spacePlayer.pause()
+        self.spacePlayer.eos_action = self.spacePlayer.EOS_LOOP
+
     def activateIntro(self):
         self.currentState = self.intro
 
     def activateGame(self):
+        self.currentState = self.game
+
+    def activateMoonCollision(self):
+        self.currentState = self.moonCollision
+
+    def activateApocalypse(self):
+        self.currentState = self.apocalypse
+
+    def newGame(self):
+        self.game = Game(self)
         self.currentState = self.game
 
     def exit(self):
