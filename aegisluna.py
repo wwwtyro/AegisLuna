@@ -2,6 +2,7 @@
 import sys
 
 import pyglet
+from pyglet.media.drivers.alsa import ALSAException
 
 from screens import *
 from game import Game
@@ -23,25 +24,53 @@ class AegisLuna(pyglet.window.Window):
 
     def prepareAssets(self):
         self.boomSound = pyglet.resource.media('boom.wav', streaming=False)
-        spaceSound = pyglet.resource.media('space.wav', streaming=False)
-        self.spacePlayer = pyglet.media.Player()
-        self.spacePlayer.queue(spaceSound)
-        self.spacePlayer.pause()
-        self.spacePlayer.eos_action = self.spacePlayer.EOS_LOOP
+        self.bounceSound = pyglet.resource.media('bounce.wav', streaming=False)
+        self.spaceSound = pyglet.resource.media('space.wav', streaming=True)
+        self.spacePlayer = None
+
+    def boom(self):
+        try:
+            self.boomSound.play()
+        except ALSAException:
+            pass
+
+    def bounce(self):
+        try:
+            self.bounceSound.play()
+        except ALSAException:
+            pass
+
+    def spaceOn(self):
+        if self.spacePlayer is None:
+            self.spacePlayer = pyglet.media.Player()
+            self.spacePlayer.queue(self.spaceSound)
+            self.spacePlayer.eos_action = self.spacePlayer.EOS_LOOP
+        if not self.spacePlayer.playing:
+            self.spacePlayer.play()
+    def spaceOff(self):
+        if self.spacePlayer is None:
+            return
+        if self.spacePlayer.playing:
+            self.spacePlayer.pause()
 
     def activateIntro(self):
+        self.spaceOff()
         self.currentState = self.intro
 
     def activateGame(self):
+        self.spaceOn()
         self.currentState = self.game
 
     def activateMoonCollision(self):
+        self.spaceOff()
         self.currentState = self.moonCollision
 
     def activateApocalypse(self):
+        self.spaceOff()
         self.currentState = self.apocalypse
 
     def newGame(self):
+        self.spaceOn()
         self.game = Game(self)
         self.currentState = self.game
 

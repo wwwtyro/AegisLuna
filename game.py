@@ -6,7 +6,6 @@ import numpy
 import pyglet
 from pyglet.gl import *
 from pyglet.window import key
-from pyglet.media.drivers.alsa import ALSAException
 
 from state import State
 from util import *
@@ -33,7 +32,6 @@ class Camera:
 class Game(State):
 
     def __init__(self, al):
-        self.bounceSound = pyglet.resource.media('bounce.wav', streaming=False)
         self.al = al
         self.keys = {}
         self.tick = 0.0
@@ -158,7 +156,6 @@ class Game(State):
         return pyglet.event.EVENT_HANDLED
 
     def update(self, dt):
-        self.al.spacePlayer.play()
         self.total_time += dt
         numroids = int(self.total_time/10) + 3
         while len(self.roids) < numroids:
@@ -185,9 +182,8 @@ class Game(State):
         self.moon.position += self.moon.velocity * dt
         emag = numpy.linalg.norm(self.earth.position - self.moon.position)
         if emag < self.earth.radius + self.moon.radius:
+            self.al.boom()
             self.al.activateMoonCollision()
-            self.al.boomSound.play()
-            self.al.spacePlayer.pause()
             return
         for roid in self.roids[:]:
             mvec = roid.position - self.moon.position
@@ -196,7 +192,7 @@ class Game(State):
             if mmag*0.9 < self.moon.radius + roid.radius:
                 mforce = mdir * numpy.linalg.norm(self.moon.velocity) * 32/roid.radius
                 try:
-                    self.bounceSound.play()
+                    self.al.bounce()
                 except ALSAException:
                     pass # "File descriptor in bad state" wat
             else:
@@ -204,10 +200,9 @@ class Game(State):
             emag = numpy.linalg.norm(self.earth.position - roid.position)
             if emag < self.earth.radius + roid.radius:
                 self.earthIntegrity -= roid.radius/2.0
-                self.al.boomSound.play()
+                self.al.boom()
                 if int(self.earthIntegrity) < 1:
                     self.al.activateApocalypse()
-                    self.al.spacePlayer.pause()
                     return
                 self.roids.remove(roid)
                 continue
