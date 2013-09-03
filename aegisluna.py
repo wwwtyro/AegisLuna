@@ -2,7 +2,6 @@
 import sys
 
 import pyglet
-from pyglet.media.drivers.alsa import ALSAException
 
 from screens import *
 from game import Game
@@ -23,25 +22,16 @@ class AegisLuna(pyglet.window.Window):
         self.activateIntro()
 
     def prepareAssets(self):
-        self.boomSound = pyglet.resource.media('boom.wav', streaming=False)
-        self.bounceSound = pyglet.resource.media('bounce.wav', streaming=False)
         self.spaceSound = pyglet.resource.media('space.wav', streaming=False)
         self.spacePlayer = None
 
     def boom(self):
-        try:
-            self.boomSound.play()
-        except ALSAException:
-            pass
+        pyglet.resource.media('boom.wav', streaming=False).play()
 
     def bounce(self):
-        try:
-            self.bounceSound.play()
-        except ALSAException:
-            pass
+        pyglet.resource.media('bounce.wav', streaming=False).play()
 
     def spaceOn(self):
-        pass
         if self.spacePlayer is None:
             self.spacePlayer = pyglet.media.Player()
             self.spacePlayer.queue(self.spaceSound)

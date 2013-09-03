@@ -190,11 +190,8 @@ class Game(State):
             mmag = numpy.linalg.norm(mvec)
             mdir = mvec / mmag
             if mmag*0.9 < self.moon.radius + roid.radius:
-                mforce = mdir * numpy.linalg.norm(self.moon.velocity) * 32/roid.radius
-                try:
-                    self.al.bounce()
-                except ALSAException:
-                    pass # "File descriptor in bad state" wat
+                mforce = mdir * numpy.linalg.norm(self.moon.velocity+1) * 2.0
+                self.al.bounce()
             else:
                 mforce = mdir * 0
             emag = numpy.linalg.norm(self.earth.position - roid.position)
