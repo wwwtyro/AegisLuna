@@ -185,7 +185,7 @@ class Game(State):
         dirForce = -numpy.array(self.b2Moon.body.linearVelocity.tuple()) * 0.1
         forward = -numpy.array([cos(self.camera.yaw), sin(self.camera.yaw)])
         forward /= numpy.linalg.norm(forward)
-        right = numpy.array([cos(self.camera.yaw - pi/4), sin(self.camera.yaw - pi/4)])
+        right = numpy.array([cos(self.camera.yaw - pi/2), sin(self.camera.yaw - pi/2)])
         right /= numpy.linalg.norm(right)
         speed = 0.1
         if key.W in self.keys:

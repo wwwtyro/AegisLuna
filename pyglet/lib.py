@@ -115,9 +115,12 @@ class LibraryLoader(object):
                     lib = _TraceLibrary(lib)
                 return lib
             except OSError, o:
-                if ((self.linux_not_found_error not in o.message) and
-                    (self.darwin_not_found_error not in o.message)):
-                    print "Unexpected error loading library %s: %s" % (name, o.message)
+                if ((self.platform == "win32" and o.winerror != 126) or
+                    (self.platform.startswith("linux") and
+                     self.linux_not_found_error not in o.args[0]) or
+                    (self.platform == "darwin" and
+                     self.darwin_not_found_error not in o.args[0])):
+                    print "Unexpected error loading library %s: %s" % (name, str(o))
                     raise
                 path = self.find_library(name)
                 if path:
@@ -181,6 +184,12 @@ class MachOLibraryLoader(LibraryLoader):
                 '..',
                 'Frameworks',
                 libname))
+
+        # pyinstaller.py sets sys.frozen to True, and puts dylibs in
+        # Contents/MacOS, which path pyinstaller puts in sys._MEIPASS
+        if (hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS') and
+                sys.frozen == True and sys.platform == 'darwin'):
+            search_path.append(os.path.join(sys._MEIPASS, libname))
 
         if '/' in path:
             search_path.extend(
