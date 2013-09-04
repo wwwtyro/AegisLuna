@@ -33,6 +33,7 @@ class Planetoid:
         shapeDef.restitution = restitution
         self.shape = self.body.CreateShape(shapeDef)
         self.body.SetMassFromShapes()
+        self.redraw = False
 
 
 class Game(State):
@@ -68,7 +69,7 @@ class Game(State):
         worldAABB.upperBound = (10000, 10000)
         self.world = b2World(worldAABB, b2Vec2(0.0, 0.0), False)
         self.b2Earth = Planetoid(self.world, [0.0,0.0], 10.0)
-        self.b2Moon = Planetoid(self.world, [20.0,0.0], 1.0)
+        self.b2Moon = Planetoid(self.world, [20.0,0.0], 1.0, density=20.0)
         self.b2Roids = []
         self.addRoid()
         self.addRoid()
@@ -83,6 +84,9 @@ class Game(State):
         self.b2Roids.append(roid)
 
     def on_draw(self):
+        if not self.redraw:
+            return
+        self.redraw = False
         glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glEnable(GL_TEXTURE_2D)
@@ -173,6 +177,7 @@ class Game(State):
         return pyglet.event.EVENT_HANDLED
 
     def update(self, dt):
+        self.redraw = True
         self.total_time += dt
         numroids = int(self.total_time/10) + 3
         while len(self.b2Roids) < numroids:
@@ -191,8 +196,8 @@ class Game(State):
             dirForce -= right * speed
         if key.D in self.keys:
             dirForce += right * speed
-        # self.b2Moon.body.ApplyImpulse(b2Vec2(list(dirForce)), self.b2Moon.body.position)
-        self.b2Moon.body.ApplyImpulse(list(dirForce + forward * speed), self.b2Moon.body.position)
+        self.b2Moon.body.ApplyImpulse(b2Vec2(list(dirForce)), self.b2Moon.body.position)
+        # self.b2Moon.body.ApplyImpulse(list(dirForce), self.b2Moon.body.position)
         self.world.Step(1.0, 10, 8)
         # self.moon.velocity += dirForce * dt
         # self.moon.position += self.moon.velocity * dt
