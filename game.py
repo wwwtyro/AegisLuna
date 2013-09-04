@@ -20,7 +20,7 @@ class Camera:
         self.dist = 20.0
 
 class Planetoid:
-    def __init__(self, world, position, radius, density=1.0, friction=0.3, restitution=0.5):
+    def __init__(self, world, position, radius, density=1.0, friction=0.3, restitution=1.0, damping=0.5):
         self.world = world
         self.radius = radius
         bodyDef = b2BodyDef()
@@ -33,6 +33,7 @@ class Planetoid:
         shapeDef.restitution = restitution
         self.shape = self.body.CreateShape(shapeDef)
         self.body.SetMassFromShapes()
+        self.body.linearDamping = damping
         self.redraw = False
 
 
@@ -68,8 +69,8 @@ class Game(State):
         worldAABB.lowerBound = (-10000, -10000)
         worldAABB.upperBound = (10000, 10000)
         self.world = b2World(worldAABB, b2Vec2(0.0, 0.0), False)
-        self.b2Earth = Planetoid(self.world, [0.0,0.0], 10.0)
-        self.b2Moon = Planetoid(self.world, [20.0,0.0], 1.0, density=20.0)
+        self.b2Earth = Planetoid(self.world, [0.0,0.0], 10.0, density=0.0)
+        self.b2Moon = Planetoid(self.world, [20.0,0.0], 1.0, density=1.0, restitution=1.0, damping=0.05)
         self.b2Roids = []
         self.addRoid()
         self.addRoid()
@@ -80,7 +81,7 @@ class Game(State):
         pos /= numpy.linalg.norm(pos)
         pos *= random.random() * 50 + 100
         radius = random.random() * 0.5 + 0.5
-        roid = Planetoid(self.world, pos, radius, density=0.1)
+        roid = Planetoid(self.world, pos, radius, density=1.0, restitution=1.0, damping = 0.01)
         self.b2Roids.append(roid)
 
     def on_draw(self):
@@ -182,12 +183,12 @@ class Game(State):
         numroids = int(self.total_time/10) + 3
         while len(self.b2Roids) < numroids:
             self.addRoid()
-        dirForce = -numpy.array(self.b2Moon.body.linearVelocity.tuple()) * 0.1
+        dirForce = numpy.zeros(2)
         forward = -numpy.array([cos(self.camera.yaw), sin(self.camera.yaw)])
         forward /= numpy.linalg.norm(forward)
         right = numpy.array([cos(self.camera.yaw - pi/2), sin(self.camera.yaw - pi/2)])
         right /= numpy.linalg.norm(right)
-        speed = 0.1
+        speed = 0.2
         if key.W in self.keys:
             dirForce += forward * speed
         if key.S in self.keys:
@@ -197,7 +198,13 @@ class Game(State):
         if key.D in self.keys:
             dirForce += right * speed
         self.b2Moon.body.ApplyImpulse(b2Vec2(list(dirForce)), self.b2Moon.body.position)
-        # self.b2Moon.body.ApplyImpulse(list(dirForce), self.b2Moon.body.position)
+        for roid in self.b2Roids:
+            er = numpy.array(self.b2Earth.body.position.tuple())
+            rr = numpy.array(roid.body.position.tuple())
+            d = er - rr
+            d /= numpy.linalg.norm(d)
+            d *= 0.001
+            roid.body.ApplyImpulse(b2Vec2(list(d)), roid.body.position)
         self.world.Step(1.0, 10, 8)
         # self.moon.velocity += dirForce * dt
         # self.moon.position += self.moon.velocity * dt
