@@ -145,7 +145,7 @@ class Game(State):
             glLoadIdentity()
             glTranslatef(roid.body.position.x, 0, roid.body.position.y)
             glScalef(roid.radius, roid.radius, roid.radius)
-            # glRotatef(roid.rotation, roid.rotation_axis[0], roid.rotation_axis[1], roid.rotation_axis[2])
+            glRotatef(roid.body.angle, 0, 1, 0)
             glBindTexture(GL_TEXTURE_2D, self.roidTexture.id)
             self.roidGeometry.draw(GL_TRIANGLES)
 
