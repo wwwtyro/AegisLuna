@@ -36,6 +36,23 @@ class Planetoid:
         self.body.linearDamping = damping
         self.redraw = False
 
+class ContactListener(b2ContactListener):
+    def __init__(self): 
+        super(ContactListener, self).__init__() 
+    def Add(self, point):
+        print point.shape1 == eshape
+        print point.shape2 == eshape
+        pass
+    def Persist(self, point):
+        """Handle persist point"""
+        pass
+    def Remove(self, point):
+        """Handle remove point"""
+        pass
+    def Result(self, point):
+        """Handle results"""
+        pass
+
 
 class Game(State):
 
@@ -69,6 +86,8 @@ class Game(State):
         worldAABB.lowerBound = (-10000, -10000)
         worldAABB.upperBound = (10000, 10000)
         self.world = b2World(worldAABB, b2Vec2(0.0, 0.0), False)
+        self.cl = ContactListener()
+        self.world.SetContactListener(self.cl)
         self.b2Earth = Planetoid(self.world, [0.0,0.0], 10.0, density=0.0)
         self.b2Moon = Planetoid(self.world, [20.0,0.0], 1.0, density=1.0, restitution=1.0, damping=0.05)
         self.b2Roids = []
