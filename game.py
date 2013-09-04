@@ -174,8 +174,7 @@ class Game(State):
         glLoadIdentity()
         glTranslatef(self.b2Moon.body.position.x, 0, self.b2Moon.body.position.y)
         glScalef(self.b2Moon.radius, self.b2Moon.radius, self.b2Moon.radius)
-        # glRotatef(self.moon.rotation, self.moon.rotation_axis[0], 
-        #           self.moon.rotation_axis[1], self.moon.rotation_axis[2])
+        glRotatef(-self.b2Moon.body.angle*32.0, 0, 1, 0)
         glBindTexture(GL_TEXTURE_2D, self.moonTexture.id)
         self.sphereGeometry.draw(GL_TRIANGLES)
 
@@ -245,38 +244,6 @@ class Game(State):
             d *= 0.001
             roid.body.ApplyImpulse(b2Vec2(list(d)), roid.body.position)
         self.world.Step(1.0, 10, 8)
-        # self.moon.velocity += dirForce * dt
-        # self.moon.position += self.moon.velocity * dt
-        # emag = numpy.linalg.norm(self.earth.position - self.moon.position)
-        # if emag < self.earth.radius + self.moon.radius:
-        #     self.al.boom()
-        #     self.al.activateMoonCollision()
-        #     return
-        # for roid in self.roids[:]:
-        #     mvec = roid.position - self.moon.position
-        #     mmag = numpy.linalg.norm(mvec)
-        #     mdir = mvec / mmag
-        #     if mmag*0.9 < self.moon.radius + roid.radius:
-        #         mforce = mdir * numpy.linalg.norm(self.moon.velocity+1) * 2.0
-        #         self.al.bounce()
-        #     else:
-        #         mforce = mdir * 0
-        #     emag = numpy.linalg.norm(self.earth.position - roid.position)
-        #     if emag < self.earth.radius + roid.radius:
-        #         self.earthIntegrity -= roid.radius/2.0
-        #         self.al.boom()
-        #         if int(self.earthIntegrity) < 1:
-        #             self.al.activateApocalypse()
-        #             return
-        #         self.roids.remove(roid)
-        #         continue
-        #     gforce = self.earth.position - roid.position
-        #     gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
-        #     dforce = roid.velocity * -0.01
-        #     roid.velocity += (mforce + dforce + gforce) * dt
-        #     roid.position += roid.velocity * dt
-        #     roid.rotation += 4.0 * dt
-        return pyglet.event.EVENT_HANDLED
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
         self.on_mouse_motion(x, y, dx, dy)
