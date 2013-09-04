@@ -10,23 +10,29 @@ from pyglet.window import key
 from state import State
 from util import *
 
-
-class Planetoid:
-    def __init__(self, geometry):
-        self.geometry = geometry
-        self.radius = 1.0
-        self.velocity = numpy.zeros(2)
-        self.position = numpy.zeros(2)
-        self.rotation = 0.0
-        self.rotation_axis = numpy.random.normal(size=3)
-        self.rotation_axis /= numpy.linalg.norm(self.rotation_axis)
+from Box2D import *
 
 
 class Camera:
     def __init__(self):
         self.yaw = 0.0
         self.pitch = pi/4.0
-        self.dist = 512.0
+        self.dist = 20.0
+
+class Planetoid:
+    def __init__(self, world, position, radius, density=1.0, friction=0.3, restitution=0.5):
+        self.world = world
+        self.radius = radius
+        bodyDef = b2BodyDef()
+        bodyDef.position = b2Vec2(list(position))
+        self.body = self.world.CreateBody(bodyDef)
+        shapeDef = b2CircleDef()
+        shapeDef.radius = radius
+        shapeDef.density = density
+        shapeDef.friction = friction
+        shapeDef.restitution = restitution
+        self.shape = self.body.CreateShape(shapeDef)
+        self.body.SetMassFromShapes()
 
 
 class Game(State):
@@ -34,38 +40,47 @@ class Game(State):
     def __init__(self, al):
         self.al = al
         self.keys = {}
-        self.tick = 0.0
-        self.sphereGeometry = buildSphere(32)
-        self.earth = Planetoid(buildSphere(64))
-        self.earth.radius = 300.0
-        self.moon = Planetoid(self.sphereGeometry)
-        self.moon.radius = 27.0
-        self.moon.position[0] = 640.0
-        self.roids = []
-        self.roidGeometry = buildAsteroid(32)
-        self.addAsteroid()        
-        self.addAsteroid()        
-        self.addAsteroid()        
+        self.camera = Camera()
+        self.earthIntegrity = 100.0
+        self.total_time = 0.0
+        self.loadAssets()
+        self.buildAssets()
+        self.initWorld()
+
+    def loadAssets(self):
         self.earthTexture = pyglet.image.load("earth.png").get_mipmapped_texture()
         self.moonTexture = pyglet.image.load("moon.png").get_mipmapped_texture()
         self.spaceTexture = pyglet.image.load("space.png").get_mipmapped_texture()
         self.roidTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
-        self.roidCircle = buildCircle([1.0,1.0,0.0,0.5])
-        self.camera = Camera()
+
+    def buildAssets(self):
+        self.sphereGeometry = buildSphere(32)
+        self.roidGeometry = buildAsteroid(32)
         self.scoreLabel = pyglet.text.Label('', font_size=18, bold=True, x=4.0, y=self.al.height, 
                                             color=(255,255,255,128), anchor_x='left', anchor_y='top')      
-        self.earthIntegrity = 100.0
         self.integrityLabel = pyglet.text.Label('', font_size=18, bold=True, x=self.al.width-4.0, y=4.0, 
                                                 color=(255,0,0,128), anchor_x='right', anchor_y='bottom')      
-        self.total_time = 0.0
 
-    def addAsteroid(self):
-        roid = Planetoid(self.roidGeometry)
-        roid.radius = random.random() * 30 + 20
-        roid.position = numpy.random.normal(size=2)
-        roid.position /= numpy.linalg.norm(roid.position)
-        roid.position *= random.random() * 2500 + 2500
-        self.roids.append(roid)
+    def initWorld(self):
+        # b2_velocityThreshold = 0.00001
+        worldAABB = b2AABB()
+        worldAABB.lowerBound = (-10000, -10000)
+        worldAABB.upperBound = (10000, 10000)
+        self.world = b2World(worldAABB, b2Vec2(0.0, 0.0), False)
+        self.b2Earth = Planetoid(self.world, [0.0,0.0], 10.0)
+        self.b2Moon = Planetoid(self.world, [20.0,0.0], 1.0)
+        self.b2Roids = []
+        self.addRoid()
+        self.addRoid()
+        self.addRoid()
+
+    def addRoid(self):
+        pos = numpy.random.normal(size=2)
+        pos /= numpy.linalg.norm(pos)
+        pos *= random.random() * 50 + 100
+        radius = random.random() * 0.5 + 0.5
+        roid = Planetoid(self.world, pos, radius, density=0.1)
+        self.b2Roids.append(roid)
 
     def on_draw(self):
         glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
@@ -88,49 +103,51 @@ class Game(State):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Camera
-        camx = self.moon.position[0] + self.camera.dist * cos(self.camera.yaw) * cos(self.camera.pitch)
+        camx = self.b2Moon.body.position.x + self.camera.dist * cos(self.camera.yaw) * cos(self.camera.pitch)
         camy = self.camera.dist * sin(self.camera.pitch)
-        camz = self.moon.position[1] + self.camera.dist * sin(self.camera.yaw) * cos(self.camera.pitch)
+        camz = self.b2Moon.body.position.y + self.camera.dist * sin(self.camera.yaw) * cos(self.camera.pitch)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(60, self.al.width/float(self.al.height), 0.1, 20000.0)
         gluLookAt(camx, camy, camz, 
-                  self.moon.position[0], self.moon.radius * 8.0, self.moon.position[1], 
+                  self.b2Moon.body.position.x, 
+                  self.b2Moon.radius * 8.0, 
+                  self.b2Moon.body.position.y, 
                   0.0, 1.0, 0.0)
+
         glMatrixMode(GL_MODELVIEW)
 
         # Draw Earth
         glLoadIdentity()
-        glTranslatef(self.earth.position[0], 0, self.earth.position[1])
-        glScalef(self.earth.radius, self.earth.radius, self.earth.radius)
-        glRotatef(self.earth.rotation, self.earth.rotation_axis[0], 
-                  self.earth.rotation_axis[1], self.earth.rotation_axis[2])
+        glTranslatef(self.b2Earth.body.position.x, 0, self.b2Earth.body.position.y)
+        glScalef(self.b2Earth.radius, self.b2Earth.radius, self.b2Earth.radius)
+        # glRotatef(self.earth.rotation, self.earth.rotation_axis[0], 
+        #           self.earth.rotation_axis[1], self.earth.rotation_axis[2])
         glBindTexture(GL_TEXTURE_2D, self.earthTexture.id)
-        self.earth.geometry.draw(GL_TRIANGLES)
+        self.sphereGeometry.draw(GL_TRIANGLES)
 
         # Draw Moon
         glLoadIdentity()
-        glTranslatef(self.moon.position[0], 0, self.moon.position[1])
-        glScalef(self.moon.radius, self.moon.radius, self.moon.radius)
-        glRotatef(self.moon.rotation, self.moon.rotation_axis[0], 
-                  self.moon.rotation_axis[1], self.moon.rotation_axis[2])
+        glTranslatef(self.b2Moon.body.position.x, 0, self.b2Moon.body.position.y)
+        glScalef(self.b2Moon.radius, self.b2Moon.radius, self.b2Moon.radius)
+        # glRotatef(self.moon.rotation, self.moon.rotation_axis[0], 
+        #           self.moon.rotation_axis[1], self.moon.rotation_axis[2])
         glBindTexture(GL_TEXTURE_2D, self.moonTexture.id)
-        self.moon.geometry.draw(GL_TRIANGLES)
+        self.sphereGeometry.draw(GL_TRIANGLES)
 
         # Draw Roids
-        for roid in self.roids:
+        for roid in self.b2Roids:
             glLoadIdentity()
-            glTranslatef(roid.position[0], 0, roid.position[1])
+            glTranslatef(roid.body.position.x, 0, roid.body.position.y)
             glScalef(roid.radius, roid.radius, roid.radius)
-            glRotatef(roid.rotation, roid.rotation_axis[0], roid.rotation_axis[1], roid.rotation_axis[2])
+            # glRotatef(roid.rotation, roid.rotation_axis[0], roid.rotation_axis[1], roid.rotation_axis[2])
             glBindTexture(GL_TEXTURE_2D, self.roidTexture.id)
-            roid.geometry.draw(GL_TRIANGLES)
+            self.roidGeometry.draw(GL_TRIANGLES)
 
         # Draw Space
         glLoadIdentity()
         glTranslatef(camx, camy, camz)
         glScalef(19000,19000,19000)
-        glRotatef(64 + self.tick * 0.005, 0.1, 0.2, 0.3)
         glBindTexture(GL_TEXTURE_2D, self.spaceTexture.id)
         glDisable(GL_LIGHTING)
         glCullFace(GL_FRONT)
@@ -158,18 +175,14 @@ class Game(State):
     def update(self, dt):
         self.total_time += dt
         numroids = int(self.total_time/10) + 3
-        while len(self.roids) < numroids:
-            self.addAsteroid()
-        dt = 1.0
-        self.tick += dt
-        self.earth.rotation += 0.1 * dt
-        self.moon.rotation += 0.1 * dt
-        dirForce = -self.moon.velocity * 0.05
+        while len(self.b2Roids) < numroids:
+            self.addRoid()
+        dirForce = -numpy.array(self.b2Moon.body.linearVelocity.tuple()) * 0.1
         forward = -numpy.array([cos(self.camera.yaw), sin(self.camera.yaw)])
         forward /= numpy.linalg.norm(forward)
         right = numpy.array([cos(self.camera.yaw - pi/4), sin(self.camera.yaw - pi/4)])
         right /= numpy.linalg.norm(right)
-        speed = 1.0
+        speed = 0.1
         if key.W in self.keys:
             dirForce += forward * speed
         if key.S in self.keys:
@@ -178,37 +191,40 @@ class Game(State):
             dirForce -= right * speed
         if key.D in self.keys:
             dirForce += right * speed
-        self.moon.velocity += dirForce * dt
-        self.moon.position += self.moon.velocity * dt
-        emag = numpy.linalg.norm(self.earth.position - self.moon.position)
-        if emag < self.earth.radius + self.moon.radius:
-            self.al.boom()
-            self.al.activateMoonCollision()
-            return
-        for roid in self.roids[:]:
-            mvec = roid.position - self.moon.position
-            mmag = numpy.linalg.norm(mvec)
-            mdir = mvec / mmag
-            if mmag*0.9 < self.moon.radius + roid.radius:
-                mforce = mdir * numpy.linalg.norm(self.moon.velocity+1) * 2.0
-                self.al.bounce()
-            else:
-                mforce = mdir * 0
-            emag = numpy.linalg.norm(self.earth.position - roid.position)
-            if emag < self.earth.radius + roid.radius:
-                self.earthIntegrity -= roid.radius/2.0
-                self.al.boom()
-                if int(self.earthIntegrity) < 1:
-                    self.al.activateApocalypse()
-                    return
-                self.roids.remove(roid)
-                continue
-            gforce = self.earth.position - roid.position
-            gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
-            dforce = roid.velocity * -0.01
-            roid.velocity += (mforce + dforce + gforce) * dt
-            roid.position += roid.velocity * dt
-            roid.rotation += 4.0 * dt
+        # self.b2Moon.body.ApplyImpulse(b2Vec2(list(dirForce)), self.b2Moon.body.position)
+        self.b2Moon.body.ApplyImpulse(list(dirForce + forward * speed), self.b2Moon.body.position)
+        self.world.Step(1.0, 10, 8)
+        # self.moon.velocity += dirForce * dt
+        # self.moon.position += self.moon.velocity * dt
+        # emag = numpy.linalg.norm(self.earth.position - self.moon.position)
+        # if emag < self.earth.radius + self.moon.radius:
+        #     self.al.boom()
+        #     self.al.activateMoonCollision()
+        #     return
+        # for roid in self.roids[:]:
+        #     mvec = roid.position - self.moon.position
+        #     mmag = numpy.linalg.norm(mvec)
+        #     mdir = mvec / mmag
+        #     if mmag*0.9 < self.moon.radius + roid.radius:
+        #         mforce = mdir * numpy.linalg.norm(self.moon.velocity+1) * 2.0
+        #         self.al.bounce()
+        #     else:
+        #         mforce = mdir * 0
+        #     emag = numpy.linalg.norm(self.earth.position - roid.position)
+        #     if emag < self.earth.radius + roid.radius:
+        #         self.earthIntegrity -= roid.radius/2.0
+        #         self.al.boom()
+        #         if int(self.earthIntegrity) < 1:
+        #             self.al.activateApocalypse()
+        #             return
+        #         self.roids.remove(roid)
+        #         continue
+        #     gforce = self.earth.position - roid.position
+        #     gforce = 0.025 * gforce/numpy.linalg.norm(gforce)
+        #     dforce = roid.velocity * -0.01
+        #     roid.velocity += (mforce + dforce + gforce) * dt
+        #     roid.position += roid.velocity * dt
+        #     roid.rotation += 4.0 * dt
         return pyglet.event.EVENT_HANDLED
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
