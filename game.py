@@ -19,9 +19,12 @@ class Camera:
         self.pitch = pi/4.0
         self.dist = 20.0
 
+
 class Planetoid:
-    def __init__(self, world, position, radius, density=1.0, friction=0.3, restitution=1.0, damping=0.5):
-        self.world = world
+    def __init__(self, game, kind, position, radius, density=1.0, friction=0.3, restitution=1.0, damping=0.5):
+        self.game = game
+        self.kind = kind
+        self.world = self.game.world
         self.radius = radius
         bodyDef = b2BodyDef()
         bodyDef.position = b2Vec2(list(position))
@@ -35,23 +38,39 @@ class Planetoid:
         self.body.SetMassFromShapes()
         self.body.linearDamping = damping
         self.redraw = False
+        self.game.b2Shapes[self.shape] = self
+    def destroy(self):
+        del self.game.b2Shapes[self.shape]
+
 
 class ContactListener(b2ContactListener):
-    def __init__(self): 
+    def __init__(self, game): 
+        self.game = game
         super(ContactListener, self).__init__() 
     def Add(self, point):
-        print point.shape1 == eshape
-        print point.shape2 == eshape
-        pass
-    def Persist(self, point):
-        """Handle persist point"""
-        pass
-    def Remove(self, point):
-        """Handle remove point"""
-        pass
-    def Result(self, point):
-        """Handle results"""
-        pass
+        poid1 = self.game.b2Shapes[point.shape1]
+        poid2 = self.game.b2Shapes[point.shape2]
+        kinds = [poid1.kind, poid2.kind]
+        if 'earth' in kinds and 'moon' in kinds:
+            self.game.al.boom()
+            self.game.al.activateMoonCollision()
+            return
+        if 'roid' in kinds and 'moon' in kinds:
+            self.game.al.bounce()
+        if 'roid' in kinds and 'earth' in kinds:
+            if poid1.kind == 'roid':
+                roid = poid1
+            else:
+                roid = poid2
+            self.game.earthIntegrity -= random.random() * 30.0
+            self.game.al.boom()
+            if int(self.game.earthIntegrity) < 1:
+                self.game.al.activateApocalypse()
+            self.game.b2Roids.remove(roid)
+
+
+
+
 
 
 class Game(State):
@@ -64,6 +83,7 @@ class Game(State):
         self.total_time = 0.0
         self.loadAssets()
         self.buildAssets()
+        self.b2Shapes = {}
         self.initWorld()
 
     def loadAssets(self):
@@ -81,15 +101,15 @@ class Game(State):
                                                 color=(255,0,0,128), anchor_x='right', anchor_y='bottom')      
 
     def initWorld(self):
-        # b2_velocityThreshold = 0.00001
+        b2_velocityThreshold = 0.00001
         worldAABB = b2AABB()
         worldAABB.lowerBound = (-10000, -10000)
         worldAABB.upperBound = (10000, 10000)
         self.world = b2World(worldAABB, b2Vec2(0.0, 0.0), False)
-        self.cl = ContactListener()
+        self.cl = ContactListener(self)
         self.world.SetContactListener(self.cl)
-        self.b2Earth = Planetoid(self.world, [0.0,0.0], 10.0, density=0.0)
-        self.b2Moon = Planetoid(self.world, [20.0,0.0], 1.0, density=1.0, restitution=1.0, damping=0.05)
+        self.b2Earth = Planetoid(self, 'earth', [0.0,0.0], 10.0, density=0.0)
+        self.b2Moon = Planetoid(self, 'moon', [20.0,0.0], 1.0, density=1.0, restitution=1.0, damping=0.05)
         self.b2Roids = []
         self.addRoid()
         self.addRoid()
@@ -100,7 +120,7 @@ class Game(State):
         pos /= numpy.linalg.norm(pos)
         pos *= random.random() * 50 + 100
         radius = random.random() * 0.5 + 0.5
-        roid = Planetoid(self.world, pos, radius, density=1.0, restitution=1.0, damping = 0.01)
+        roid = Planetoid(self, 'roid', pos, radius, density=1.0, restitution=1.0, damping = 0.01)
         self.b2Roids.append(roid)
 
     def on_draw(self):
