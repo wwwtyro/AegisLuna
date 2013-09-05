@@ -5,8 +5,11 @@ Game entry for pyweek September 2013
 
 Installation:
 
-1. install numpy and box2d (e.g., sudo pip install numpy)
-2. python aegisluna.py
+install numpy (e.g., sudo pip install numpy)
+
+Run:
+
+python aegisluna.py
 
 Controls:
 
