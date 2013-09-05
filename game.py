@@ -57,33 +57,37 @@ class ContactListener(b2ContactListener):
             return
         if 'roid' in kinds and 'moon' in kinds:
             self.game.al.bounce()
+            if poid1.kind == 'roid':
+                roid = poid1
+            else:
+                roid = poid2
+            self.game.explode(roid.body.position.x, 0, roid.body.position.y, [0.5, 0.25, 0.0], 1000, 100)
         if 'roid' in kinds and 'earth' in kinds:
             if poid1.kind == 'roid':
                 roid = poid1
             else:
                 roid = poid2
+            roid.dead = True
             self.game.earthIntegrity -= random.random() * 30.0
             self.game.al.boom()
+            self.game.explode(roid.body.position.x, 0, roid.body.position.y, [1, 0, 0], 3000, 200)
+            self.game.explode(roid.body.position.x, 0, roid.body.position.y, [1, 1, 0], 2000, 300)
+            self.game.explode(roid.body.position.x, 0, roid.body.position.y, [1, 1, 1], 1000, 400)
             if int(self.game.earthIntegrity) < 1:
                 self.game.al.activateApocalypse()
-            self.game.b2Roids.remove(roid)
-
-
-
-
-
 
 class Game(State):
 
     def __init__(self, al):
         self.al = al
         self.keys = {}
+        self.b2Shapes = {}
+        self.particles = []
         self.camera = Camera()
         self.earthIntegrity = 100.0
         self.total_time = 0.0
         self.loadAssets()
         self.buildAssets()
-        self.b2Shapes = {}
         self.initWorld()
 
     def loadAssets(self):
@@ -121,7 +125,17 @@ class Game(State):
         pos *= random.random() * 50 + 100
         radius = random.random() * 0.5 + 0.5
         roid = Planetoid(self, 'roid', pos, radius, density=1.0, restitution=1.0, damping = 0.01)
+        roid.dead = False
         self.b2Roids.append(roid)
+
+    def explode(self, x, y, z, color, count, lifespan=100):
+        p = Particles(count=count, 
+                      center=[x,y,z], 
+                      color=color, 
+                      lifespan=lifespan)
+        p.explode(speed=0.1)
+        self.particles.append(p)
+
 
     def on_draw(self):
         if not self.redraw:
@@ -198,6 +212,18 @@ class Game(State):
         glCullFace(GL_BACK)
         glEnable(GL_LIGHTING)
 
+        # Draw Particles
+        glLoadIdentity()
+        glDisable(GL_TEXTURE_2D)
+        glDisable(GL_LIGHTING)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)                                             
+        glPointSize(1.0)
+        for particle in self.particles:
+            particle.particles.draw(GL_POINTS)
+        glEnable(GL_LIGHTING)
+        glEnable(GL_TEXTURE_2D)
+
         # Draw GUI
         glDisable(GL_LIGHTING)
         glMatrixMode(GL_PROJECTION)
@@ -212,8 +238,6 @@ class Game(State):
         self.integrityLabel.text = "Earth Integrity: %d%%" % int(self.earthIntegrity)
         self.integrityLabel.draw()
         glEnable(GL_LIGHTING)
-
-        return pyglet.event.EVENT_HANDLED
 
     def update(self, dt):
         self.redraw = True
@@ -244,6 +268,14 @@ class Game(State):
             d *= 0.001
             roid.body.ApplyImpulse(b2Vec2(list(d)), roid.body.position)
         self.world.Step(1.0, 10, 8)
+        for roid in self.b2Roids[:]:
+            if roid.dead:
+                self.b2Roids.remove(roid)
+                self.world.DestroyBody(roid.body)
+        for particle in self.particles[:]:
+            particle.update()
+            if particle.dead:
+                self.particles.remove(particle)
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
         self.on_mouse_motion(x, y, dx, dy)

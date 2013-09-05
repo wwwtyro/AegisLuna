@@ -152,5 +152,31 @@ def buildCircle(color):
     return pyglet.graphics.vertex_list(len(vertices)/3, ('v3f', vertices), ('c4f', colors))
 
 
+class Particles:
 
+    def __init__(self, count, center=[0,0,0], color=[1,1,1], lifespan=100):
+        self.age = 0
+        self.count = count
+        self.lifespan = lifespan
+        self.dead = False
+        self.center = center
+        self.vertices = numpy.zeros((count,3)) + center
+        self.velocity = numpy.zeros((count,3))
+        self.colors = numpy.array((color + [1]) * count).reshape((count, 4))
+        self.particles = pyglet.graphics.vertex_list(count, ('v3f/stream', self.vertices.ravel().tolist()), ('c4f/stream', self.colors.ravel().tolist()))
+
+    def explode(self, speed=1.0):
+        self.velocity = numpy.random.normal(scale=speed, size=self.count*3).reshape((self.count, 3))
+
+    def update(self):
+        if self.age == self.lifespan and self.lifespan > 0:
+            self.dead = True
+            return
+        if self.lifespan > 0:
+            self.age += 1
+            alpha = 1.0 - float(self.age)/self.lifespan
+            tempcolors = self.colors * numpy.array([1,1,1,alpha])
+            self.particles.colors = tempcolors.ravel().tolist()
+        self.vertices += self.velocity
+        self.particles.vertices = self.vertices.ravel().tolist()
 
