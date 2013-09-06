@@ -14,7 +14,7 @@ class Camera:
     def __init__(self):
         self.yaw = 0.0
         self.pitch = pi/4.0
-        self.dist = 20.0
+        self.dist = 32.0
 
 
 class Planetoid:
@@ -22,6 +22,9 @@ class Planetoid:
         self.position = position
         self.radius = radius
         self.velocity = numpy.zeros(2)
+        self.axis = numpy.random.normal(size=3)
+        self.axis /= numpy.linalg.norm(self.axis)
+        self.rotation = 0.0
 
 
 class Game(State):
@@ -54,7 +57,7 @@ class Game(State):
 
     def initWorld(self):
         self.earth = Planetoid(numpy.array([0.,0.]), 10.0)
-        self.moon = Planetoid(numpy.array([20.,0.]), 1.0)
+        self.moon = Planetoid(numpy.array([20.,0.]), 2.7)
         self.roids = []
         self.addRoid()
         self.addRoid()
@@ -67,17 +70,16 @@ class Game(State):
         radius = random.random() * 0.5 + 0.5
         roid = Planetoid(pos, radius)
         d = self.earth.position - roid.position
-        roid.velocity = random.random()*0.1*d/numpy.linalg.norm(d)
+        roid.velocity = (0.1+random.random()*0.2)*d/numpy.linalg.norm(d)
         self.roids.append(roid)
 
-    def explode(self, x, y, z, color, count, lifespan=100, speed=0.1):
+    def explode(self, x, y, z, color, count, lifespan=100, velocity=None, spread=0.01):
         p = Particles(count=count, 
                       center=[x,y,z], 
                       color=color, 
                       lifespan=lifespan)
-        p.explode(speed=speed)
+        p.explode(velocity, spread)
         self.particles.append(p)
-
 
     def on_draw(self):
         glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
@@ -108,7 +110,7 @@ class Game(State):
         gluPerspective(60, self.al.width/float(self.al.height), 0.1, 20000.0)
         gluLookAt(camx, camy, camz, 
                   self.moon.position[0], 
-                  self.moon.radius * 8.0, 
+                  self.moon.radius * 4.0, 
                   self.moon.position[1], 
                   0.0, 1.0, 0.0)
 
@@ -118,8 +120,7 @@ class Game(State):
         glLoadIdentity()
         glTranslatef(self.earth.position[0], 0, self.earth.position[1])
         glScalef(self.earth.radius, self.earth.radius, self.earth.radius)
-        # glRotatef(self.earth.rotation, self.earth.rotation_axis[0], 
-        #           self.earth.rotation_axis[1], self.earth.rotation_axis[2])
+        glRotatef(self.earth.rotation, self.earth.axis[0], self.earth.axis[1], self.earth.axis[2])
         glBindTexture(GL_TEXTURE_2D, self.earthTexture.id)
         self.sphereGeometry.draw(GL_TRIANGLES)
 
@@ -127,7 +128,7 @@ class Game(State):
         glLoadIdentity()
         glTranslatef(self.moon.position[0], 0, self.moon.position[1])
         glScalef(self.moon.radius, self.moon.radius, self.moon.radius)
-        # glRotatef(-self.moon.body.angle*32.0, 0, 1, 0)
+        glRotatef(self.moon.rotation, self.moon.axis[0], self.moon.axis[1], self.moon.axis[2])
         glBindTexture(GL_TEXTURE_2D, self.moonTexture.id)
         self.sphereGeometry.draw(GL_TRIANGLES)
 
@@ -217,19 +218,27 @@ class Game(State):
                 if int(self.earthIntegrity) < 1:
                     self.al.activateApocalypse()
                     return
-                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 3000, 1000)
-                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 2000, 1000)
-                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 1], 1000, 1000)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 3000, 1000, -roid.velocity, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 2000, 1000, -roid.velocity, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 1], 1000, 1000, -roid.velocity, 0.1)
             # Check for moon collision
             if numpy.linalg.norm(roid.position - self.moon.position) < roid.radius + self.moon.radius:
                 self.roids.remove(roid)
                 self.al.boom()
-                self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 1000, 500, 0.25)
+                dr = unit(roid.position - self.moon.position)
+                dm = unit(self.moon.velocity)
+                v = norm(self.moon.velocity) * dr * numpy.dot(dm, dr)
+                self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 1000, 500, v, 0.1)
         # Update Particles.
         for particle in self.particles[:]:
             particle.update()
             if particle.dead:
                 self.particles.remove(particle)
+        # Update Planetoid rotations
+        self.earth.rotation += 0.1
+        self.moon.rotation += 0.2
+        for roid in self.roids:
+            roid.rotation += 0.1
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
         self.on_mouse_motion(x, y, dx, dy)

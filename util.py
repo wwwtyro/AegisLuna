@@ -1,25 +1,18 @@
 from math import pi, sin, cos, sqrt
+import random
 import numpy
+from numpy.linalg import norm
 import perlin
 import pyglet
 from pyglet.gl import *
 
 simplex = perlin.SimplexNoise()
 
-def RotMatArbAxis(angle, A):
-    c = cos(angle)
-    s = sin(angle)
-    Ax = A[0]
-    Ay = A[1]
-    Az = A[2]
-    row0 = [   c + (1 - c)*Ax**2, (1 - c)*Ax*Ay - s*Az, (1 - c)*Ax*Az + s*Ay]
-    row1 = [(1 - c)*Ax*Ay + s*Az,    c + (1 - c)*Ay**2, (1 - c)*Ay*Az - s*Ax]
-    row2 = [(1 - c)*Ax*Az - s*Ay, (1 - c)*Ay*Az + s*Ax,    c + (1 - c)*Az**2]
-    return numpy.array([row0, row1, row2])
-
 def vec(*args):
     return (GLfloat * len(args))(*args)
 
+def unit(v):
+    return v/numpy.linalg.norm(v)
 
 def spherePoint(yaw, pitch):
     x = cos(yaw) * cos(pitch)
@@ -165,8 +158,13 @@ class Particles:
         self.colors = numpy.array((color + [1]) * count).reshape((count, 4))
         self.particles = pyglet.graphics.vertex_list(count, ('v3f/stream', self.vertices.ravel().tolist()), ('c4f/stream', self.colors.ravel().tolist()))
 
-    def explode(self, speed=1.0):
-        self.velocity = numpy.random.normal(scale=speed, size=self.count*3).reshape((self.count, 3))
+    def explode(self, velocity, spread):
+        if velocity is None:
+            velocity = numpy.zeros(3)
+        else:
+            if len(velocity) == 2:
+                velocity = numpy.array([velocity[0], 0.0, velocity[1]])
+        self.velocity = numpy.ones((self.count,3))*velocity + numpy.random.normal(scale=spread, size=(self.count, 3))
 
     def update(self):
         if self.age == self.lifespan and self.lifespan > 0:
