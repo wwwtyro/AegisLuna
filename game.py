@@ -22,8 +22,7 @@ class Planetoid:
         self.position = position
         self.radius = radius
         self.velocity = numpy.zeros(2)
-        self.axis = numpy.random.normal(size=3)
-        self.axis /= numpy.linalg.norm(self.axis)
+        self.axis = unit(numpy.random.normal(size=3))
         self.rotation = 0.0
 
 
@@ -32,8 +31,9 @@ class Game(State):
     def __init__(self, al):
         self.al = al
         self.keys = {}
-        self.b2Shapes = {}
+        self.buttons = {}
         self.particles = []
+        self.boost = 1.0
         self.camera = Camera()
         self.earthIntegrity = 100.0
         self.total_time = 0.0
@@ -54,6 +54,8 @@ class Game(State):
                                             color=(255,255,255,128), anchor_x='left', anchor_y='top')      
         self.integrityLabel = pyglet.text.Label('', font_size=18, bold=True, x=self.al.width-4.0, y=4.0, 
                                                 color=(255,0,0,128), anchor_x='right', anchor_y='bottom')      
+        self.boostLabel = pyglet.text.Label('', font_size=18, bold=True, x=4.0, y=4.0, 
+                                                color=(0,255,255,128), anchor_x='left', anchor_y='bottom')      
 
     def initWorld(self):
         self.earth = Planetoid(numpy.array([0.,0.]), 10.0)
@@ -67,10 +69,10 @@ class Game(State):
         pos = numpy.random.normal(size=2)
         pos /= numpy.linalg.norm(pos)
         pos *= random.random() * 50 + 100
-        radius = random.random() * 0.5 + 0.5
+        radius = random.random() * 1.0 + 1.0
         roid = Planetoid(pos, radius)
         d = self.earth.position - roid.position
-        roid.velocity = (0.1+random.random()*0.2)*d/numpy.linalg.norm(d)
+        roid.velocity = (0.1+random.random()*0.1)*d/numpy.linalg.norm(d)
         self.roids.append(roid)
 
     def explode(self, x, y, z, color, count, lifespan=100, velocity=None, spread=0.01):
@@ -137,7 +139,7 @@ class Game(State):
             glLoadIdentity()
             glTranslatef(roid.position[0], 0, roid.position[1])
             glScalef(roid.radius, roid.radius, roid.radius)
-            # glRotatef(-roid.body.angle*32.0, 0, 1, 0)
+            glRotatef(roid.rotation, roid.axis[0], roid.axis[1], roid.axis[2])
             glBindTexture(GL_TEXTURE_2D, self.roidTexture.id)
             self.roidGeometry.draw(GL_TRIANGLES)
 
@@ -177,9 +179,14 @@ class Game(State):
                                      int(255*(self.earthIntegrity)/100.0), 0, 128)
         self.integrityLabel.text = "Earth Integrity: %d%%" % int(self.earthIntegrity)
         self.integrityLabel.draw()
+        self.boostLabel.text = "Boost: %d" % int(self.boost * 100)
+        self.boostLabel.draw()
         glEnable(GL_LIGHTING)
 
     def update(self, dt):
+        if 1 in self.buttons:
+            self.boost -= dt
+            self.boost = max(self.boost, 0)
         self.total_time += dt
         numroids = int(self.total_time/10) + 3
         while len(self.roids) < numroids:
@@ -191,6 +198,8 @@ class Game(State):
         right = numpy.array([cos(self.camera.yaw - pi/2), sin(self.camera.yaw - pi/2)])
         right /= numpy.linalg.norm(right)
         speed = 0.1
+        if 1 in self.buttons and self.boost > 0:
+            speed *= 4.0
         if key.W in self.keys:
             dirForce += forward * speed
         if key.S in self.keys:
@@ -218,18 +227,18 @@ class Game(State):
                 if int(self.earthIntegrity) < 1:
                     self.al.activateApocalypse()
                     return
-                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 1000, 1000, -roid.velocity, 0.1)
-                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 1000, 1000, -roid.velocity, 0.1)
-                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 1], 1000, 1000, -roid.velocity, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 2000, 1000, -roid.velocity*0.5, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 1500, 1000, -roid.velocity*0.5, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 1], 1000, 1000, -roid.velocity*0.5, 0.1)
             # Check for moon collision
             if numpy.linalg.norm(roid.position - self.moon.position) < roid.radius + self.moon.radius:
                 self.roids.remove(roid)
                 self.al.boom()
+                self.boost += 0.1
                 dr = unit(roid.position - self.moon.position)
                 dm = unit(self.moon.velocity)
                 v = norm(self.moon.velocity) * dr * numpy.dot(dm, dr)
                 self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 1000, 500, v, 0.1)
-                self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.5, 0], 1000, 250, v*0.5, 0.05)
         # Update Particles.
         for particle in self.particles[:]:
             particle.update()
@@ -239,10 +248,17 @@ class Game(State):
         self.earth.rotation += 0.1
         self.moon.rotation += 0.2
         for roid in self.roids:
-            roid.rotation += 0.1
+            roid.rotation += 2.0
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
         self.on_mouse_motion(x, y, dx, dy)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        self.buttons[button] = True
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        if button in self.buttons:
+            del self.buttons[button]
 
     def on_key_press(self, symbol, modifiers):
         if symbol == pyglet.window.key.ESCAPE:
