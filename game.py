@@ -218,8 +218,8 @@ class Game(State):
                 if int(self.earthIntegrity) < 1:
                     self.al.activateApocalypse()
                     return
-                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 3000, 1000, -roid.velocity, 0.1)
-                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 2000, 1000, -roid.velocity, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 1000, 1000, -roid.velocity, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 1000, 1000, -roid.velocity, 0.1)
                 self.explode(roid.position[0], 0, roid.position[1], [1, 1, 1], 1000, 1000, -roid.velocity, 0.1)
             # Check for moon collision
             if numpy.linalg.norm(roid.position - self.moon.position) < roid.radius + self.moon.radius:
@@ -229,6 +229,7 @@ class Game(State):
                 dm = unit(self.moon.velocity)
                 v = norm(self.moon.velocity) * dr * numpy.dot(dm, dr)
                 self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 1000, 500, v, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.5, 0], 1000, 250, v*0.5, 0.05)
         # Update Particles.
         for particle in self.particles[:]:
             particle.update()
