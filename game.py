@@ -71,9 +71,9 @@ class Game(State):
         pos *= random.random() * 50 + 100
         radius = random.random() * 1.0 + 1.0
         roid = Planetoid(pos, radius)
-        d = self.earth.position - roid.position
-        roid.velocity = (0.1+random.random()*0.1)*d/numpy.linalg.norm(d)
+        roid.speed = (0.1+random.random()*0.1)
         self.roids.append(roid)
+        return roid
 
     def explode(self, x, y, z, color, count, lifespan=100, velocity=None, spread=0.01):
         p = Particles(count=count, 
@@ -184,7 +184,7 @@ class Game(State):
         glEnable(GL_LIGHTING)
 
     def update(self, dt):
-        if 1 in self.buttons:
+        if key.SPACE in self.keys:
             self.boost -= dt
             self.boost = max(self.boost, 0)
         self.total_time += dt
@@ -198,7 +198,7 @@ class Game(State):
         right = numpy.array([cos(self.camera.yaw - pi/2), sin(self.camera.yaw - pi/2)])
         right /= numpy.linalg.norm(right)
         speed = 0.1
-        if 1 in self.buttons and self.boost > 0:
+        if key.SPACE in self.keys and self.boost > 0:
             speed *= 4.0
         if key.W in self.keys:
             dirForce += forward * speed
@@ -217,12 +217,15 @@ class Game(State):
             return
         # Update Roids
         for roid in self.roids[:]:
+            # Update velocity.
+            v = roid.speed*unit(self.earth.position - roid.position)
+            roid.velocity += (v - roid.velocity) * 0.01
             # Update position.
             roid.position += roid.velocity * dt
             # Check for earth collision
             if numpy.linalg.norm(roid.position - self.earth.position) < roid.radius + self.earth.radius:
                 self.roids.remove(roid)
-                self.earthIntegrity -= random.random() * 30.0
+                self.earthIntegrity -= random.random() * roid.radius * 15.0
                 self.al.boom()
                 if int(self.earthIntegrity) < 1:
                     self.al.activateApocalypse()
@@ -234,11 +237,21 @@ class Game(State):
             if numpy.linalg.norm(roid.position - self.moon.position) < roid.radius + self.moon.radius:
                 self.roids.remove(roid)
                 self.al.boom()
-                self.boost += 0.1
+                self.boost += 0.25
                 dr = unit(roid.position - self.moon.position)
                 dm = unit(self.moon.velocity)
                 v = norm(self.moon.velocity) * dr * numpy.dot(dm, dr)
                 self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 1000, 500, v, 0.1)
+                if roid.radius > 1.5:
+                    roid1 = self.addRoid()
+                    roid2 = self.addRoid()
+                    roid1.radius = random.random() * 0.5 + 0.5
+                    roid2.radius = random.random() * 0.5 + 0.5
+                    roid1.position = self.moon.position + dr * (0.5 + self.moon.radius + 0.5)
+                    roid2.position = self.moon.position + dr * (0.5 + self.moon.radius + 0.5)
+                    roid1.velocity = v * 2.0 + numpy.random.normal(scale=0.1, size=2)
+                    roid2.velocity = v * 2.0 + numpy.random.normal(scale=0.1, size=2)
+
         # Update Particles.
         for particle in self.particles[:]:
             particle.update()
@@ -248,7 +261,7 @@ class Game(State):
         self.earth.rotation += 0.1
         self.moon.rotation += 0.2
         for roid in self.roids:
-            roid.rotation += 2.0
+            roid.rotation += 8.0
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
         self.on_mouse_motion(x, y, dx, dy)

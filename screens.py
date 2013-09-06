@@ -8,8 +8,8 @@ class Intro(State):
     def __init__(self, al):
         self.al = al
         text  = 'Aegis Luna\n\n'
-        text += 'Instructions: use the mouse and WASD to steer. Protect Earth from incoming '
-        text += 'asteroids by colliding the moon with them!\n\n'
+        text += 'Instructions: use the mouse and WASD to steer. Spacebar to boost speed. Protect Earth from incoming '
+        text += 'asteroids by ramming them with the moon!\n\n'
         text += 'Click to continue, or hit escape to quit.'
         self.label = pyglet.text.Label(text, font_size=18, bold=False, multiline=True, width=self.al.width//3,
                                        x=self.al.width//2, y=self.al.height//2, color=(255,128,0,255),
