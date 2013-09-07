@@ -2,6 +2,12 @@
 
 import sys
 
+try:
+    import numpy
+except:
+    print "Aegis Luna cannot run, because it looks like numpy is not installed."
+    sys.exit()
+
 import pyglet
 from pyglet.gl import *
 
@@ -25,18 +31,18 @@ class AegisLuna(pyglet.window.Window):
         self.activateIntro()
 
     def prepareAssets(self):
-        self.earthTexture = pyglet.image.load("earth.png").get_mipmapped_texture()
-        self.moonTexture = pyglet.image.load("moon.png").get_mipmapped_texture()
-        self.spaceTexture = pyglet.image.load("space.png").get_mipmapped_texture()
-        self.roidTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
-        self.pointTexture = pyglet.image.load("point.png").get_mipmapped_texture()
+        self.earthTexture = pyglet.image.load("assets/earth.png").get_mipmapped_texture()
+        self.moonTexture = pyglet.image.load("assets/moon.png").get_mipmapped_texture()
+        self.spaceTexture = pyglet.image.load("assets/space.png").get_mipmapped_texture()
+        self.roidTexture = pyglet.image.load("assets/rock.png").get_mipmapped_texture()
+        self.pointTexture = pyglet.image.load("assets/point.png").get_mipmapped_texture()
         self.sphereGeometry = buildSphere(32)
         self.roidGeometry = buildAsteroid(32)
-        self.spaceSound = pyglet.resource.media('space.wav', streaming=False)
+        self.spaceSound = pyglet.resource.media('assets/space.wav', streaming=False)
         self.spacePlayer = None
 
     def boom(self):
-        pyglet.resource.media('boom.wav', streaming=False).play()
+        pyglet.resource.media('assets/boom.wav', streaming=False).play()
 
     def spaceOn(self):
         if self.spacePlayer is None:
