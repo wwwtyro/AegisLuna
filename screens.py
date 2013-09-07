@@ -82,13 +82,23 @@ def genericDraw(al):
 class Intro(State):
     def __init__(self, al):
         self.al = al
-        text  = 'Aegis Luna\n\n'
-        text += 'Instructions: use the mouse and WASD to steer. Spacebar to boost speed. Protect Earth from incoming '
-        text += 'asteroids by ramming them with the moon!\n\n'
+        text  = "Aegis Luna\n\n"
+        text += "An alien race is bent on the destruction of humanity. "
+        text += "To accomplish their goals, they are teleporting huge asteroids into Earth's gravitational field "
+        text += "to fall upon the planet, rendering it inhospitable. Humanity is surprised and overwhelmed by this "
+        text += "tactic, and Earth is doomed. People are attempting to escape in spacecraft, but the planet will be obliterated "
+        text += "before all of humanity can hope to escape.\n\n"
+        text += "In a desperate attempt to delay the inevitable, antigrav mining rigs on the Moon are retrofitted to accelerate "
+        text += "the Moon into the asteroids and destroy them.\n\n"
+        text += "You are the pilot.\n\n"
+        text += "Here are your instructions:\n\n"
+        text += "Use the mouse and WASD to steer, and the spacebar to temporarily boost your speed. "
+        text += "Earth's shields will gradually recharge, but if the planet is hit while the shields are too low, "
+        text += "or if you ever hit the Earth with the Moon, it's curtains.\n\n"
         text += 'Click to continue, or hit escape to quit.'
-        self.label = pyglet.text.Label(text, font_size=18, bold=True, multiline=True, width=self.al.width//3,
-                                       x=self.al.width//2, y=self.al.height//2, color=(255,128,0,255),
-                                       anchor_x='center', anchor_y='center')        
+        self.label = pyglet.text.Label(text, font_size=14, bold=False, multiline=True, width=self.al.width//3,
+                                       x=16, y=self.al.height//2, color=(0, 255, 128, 255),
+                                       anchor_x='left', anchor_y='center')        
     def on_draw(self):
         genericDraw(self.al)
         glViewport(0,0,self.al.width,self.al.height)

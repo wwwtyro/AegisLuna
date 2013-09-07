@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import glob
 
 try:
     import numpy
@@ -10,6 +11,8 @@ except:
 
 import pyglet
 from pyglet.gl import *
+from pyglet.window import key
+
 
 from screens import *
 from util import *
@@ -39,42 +42,27 @@ class AegisLuna(pyglet.window.Window):
         self.sphereGeometry = buildSphere(32)
         self.roidGeometry = buildAsteroid(32)
         self.spaceSound = pyglet.resource.media('assets/space.wav', streaming=False)
-        self.spacePlayer = None
+        self.spacePlayer = pyglet.media.Player()
+        self.spacePlayer.queue(self.spaceSound)
+        self.spacePlayer.eos_action = self.spacePlayer.EOS_LOOP
+        self.spacePlayer.play()
 
     def boom(self):
         pyglet.resource.media('assets/boom.wav', streaming=False).play()
 
-    def spaceOn(self):
-        if self.spacePlayer is None:
-            self.spacePlayer = pyglet.media.Player()
-            self.spacePlayer.queue(self.spaceSound)
-            self.spacePlayer.eos_action = self.spacePlayer.EOS_LOOP
-        if not self.spacePlayer.playing:
-            self.spacePlayer.play()
-    def spaceOff(self):
-        if self.spacePlayer is None:
-            return
-        if self.spacePlayer.playing:
-            self.spacePlayer.pause()
-
     def activateIntro(self):
-        self.spaceOff()
         self.currentState = self.intro
 
     def activateGame(self):
-        self.spaceOn()
         self.currentState = self.game
 
     def activateMoonCollision(self):
-        self.spaceOff()
         self.currentState = self.moonCollision
 
     def activateApocalypse(self):
-        self.spaceOff()
         self.currentState = self.apocalypse
 
     def newGame(self):
-        self.spaceOn()
         self.game = Game(self)
         self.currentState = self.game
 
@@ -106,6 +94,9 @@ class AegisLuna(pyglet.window.Window):
             return pyglet.event.EVENT_HANDLED
 
     def on_key_press(self, symbol, modifiers):
+        if symbol == pyglet.window.key.X:
+            c = len(glob.glob('screenshot*.png'))
+            pyglet.image.get_buffer_manager().get_color_buffer().save('screenshot%s.png' % c)            
         if self.currentState:
             self.currentState.on_key_press(symbol, modifiers)
             return pyglet.event.EVENT_HANDLED
@@ -119,11 +110,14 @@ class AegisLuna(pyglet.window.Window):
         if self.currentState:
             self.currentState.on_mouse_motion(x, y, dx, dy)
             return pyglet.event.EVENT_HANDLED
-        
+
+    def on_resize(self, width, height):
+        if self.currentState:
+            self.currentState.on_resize(width, height)
+            return pyglet.event.EVENT_HANDLED
 
 def main():
     al = AegisLuna(fullscreen=True)
-    # al = AegisLuna(fullscreen=False, width=1280, height=800)
     pyglet.app.run()
 
 

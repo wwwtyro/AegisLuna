@@ -15,6 +15,7 @@ class Camera:
         self.yaw = 0.0
         self.pitch = pi/4.0
         self.dist = 32.0
+        self.target = numpy.array([0.0,0.0])
 
 
 class Planetoid:
@@ -35,7 +36,7 @@ class Game(State):
         self.particles = []
         self.boost = 1.0
         self.camera = Camera()
-        self.earthIntegrity = 100.0
+        self.earthShields = 100.0
         self.total_time = 0.0
         self.initAssets()
         self.initWorld()
@@ -43,7 +44,7 @@ class Game(State):
     def initAssets(self):
         self.scoreLabel = pyglet.text.Label('', font_size=18, bold=True, x=4.0, y=self.al.height, 
                                             color=(255,255,255,128), anchor_x='left', anchor_y='top')      
-        self.integrityLabel = pyglet.text.Label('', font_size=18, bold=True, x=self.al.width-4.0, y=4.0, 
+        self.shieldsLabel = pyglet.text.Label('', font_size=18, bold=True, x=self.al.width-4.0, y=4.0, 
                                                 color=(255,0,0,128), anchor_x='right', anchor_y='bottom')      
         self.boostLabel = pyglet.text.Label('', font_size=18, bold=True, x=4.0, y=4.0, 
                                                 color=(0,255,255,128), anchor_x='left', anchor_y='bottom')      
@@ -57,7 +58,7 @@ class Game(State):
         self.addRoid()
         self.addRoid()
 
-    def addRoid(self):
+    def addRoid(self, teleported = True):
         pos = numpy.random.normal(size=2)
         pos /= numpy.linalg.norm(pos)
         pos *= random.random() * 50 + 100
@@ -65,6 +66,8 @@ class Game(State):
         roid = Planetoid(pos, radius)
         roid.speed = (0.1+random.random()*0.1)
         self.roids.append(roid)
+        if teleported:
+            self.explode(roid.position[0], 0, roid.position[1], [0, 0.5, 1], 100, 1000, spread=0.01)
         return roid
 
     def explode(self, x, y, z, color, count, lifespan=100, velocity=None, spread=0.01):
@@ -96,9 +99,9 @@ class Game(State):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Camera
-        camx = self.moon.position[0] + self.camera.dist * cos(self.camera.yaw) * cos(self.camera.pitch)
+        camx = self.camera.target[0] + self.camera.dist * cos(self.camera.yaw) * cos(self.camera.pitch)
         camy = self.camera.dist * sin(self.camera.pitch)
-        camz = self.moon.position[1] + self.camera.dist * sin(self.camera.yaw) * cos(self.camera.pitch)
+        camz = self.camera.target[1] + self.camera.dist * sin(self.camera.yaw) * cos(self.camera.pitch)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(60, self.al.width/float(self.al.height), 0.1, 20000.0)
@@ -175,15 +178,19 @@ class Game(State):
         glLoadIdentity()
         self.scoreLabel.text = "%d people saved" % int(self.total_time * 100)
         self.scoreLabel.draw()
-        self.integrityLabel.color = (int(255*(100-self.earthIntegrity)/100.0), 
-                                     int(255*(self.earthIntegrity)/100.0), 0, 128)
-        self.integrityLabel.text = "Earth Integrity: %d%%" % int(self.earthIntegrity)
-        self.integrityLabel.draw()
+        self.shieldsLabel.color = (int(255*(100-self.earthShields)/100.0), 
+                                     int(255*(self.earthShields)/100.0), 0, 128)
+        self.shieldsLabel.text = "Earth Shields: %d%%" % int(self.earthShields)
+        self.shieldsLabel.draw()
         self.boostLabel.text = "Boost: %d" % int(self.boost * 100)
         self.boostLabel.draw()
         glEnable(GL_LIGHTING)
 
     def update(self, dt):
+        self.earthShields += dt
+        self.earthShields = min(self.earthShields, 100.0)
+        self.boost += dt * 0.15
+        self.boost = min(self.boost, 1.0)
         if key.SPACE in self.keys:
             self.boost -= dt
             self.boost = max(self.boost, 0)
@@ -210,6 +217,7 @@ class Game(State):
             dirForce += right * speed
         self.moon.velocity += dirForce * dt
         self.moon.position += self.moon.velocity * dt
+        self.camera.target += 0.25 * (self.moon.position - self.camera.target)
         # Check for earth-moon collision
         if numpy.linalg.norm(self.earth.position - self.moon.position) < self.moon.radius + self.earth.radius:
             self.al.boom()
@@ -225,9 +233,9 @@ class Game(State):
             # Check for earth collision
             if numpy.linalg.norm(roid.position - self.earth.position) < roid.radius + self.earth.radius:
                 self.roids.remove(roid)
-                self.earthIntegrity -= random.random() * roid.radius * 15.0
+                self.earthShields -= random.random() * roid.radius * 15.0
                 self.al.boom()
-                if int(self.earthIntegrity) < 1:
+                if int(self.earthShields) < 1:
                     self.al.activateApocalypse()
                     return
                 self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 400, 1000, roid.velocity*0.0, 0.025)
@@ -237,14 +245,14 @@ class Game(State):
             if numpy.linalg.norm(roid.position - self.moon.position) < roid.radius + self.moon.radius:
                 self.roids.remove(roid)
                 self.al.boom()
-                self.boost += 0.25
                 dr = unit(roid.position - self.moon.position)
                 dm = unit(self.moon.velocity)
                 v = norm(self.moon.velocity) * dr * numpy.dot(dm, dr)
                 self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 200, 500, v, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [0.9, 0.9, 0.9], 100, 500, v, 0.1)
                 if roid.radius > 1.5:
-                    roid1 = self.addRoid()
-                    roid2 = self.addRoid()
+                    roid1 = self.addRoid(False)
+                    roid2 = self.addRoid(False)
                     roid1.radius = random.random() * 0.5 + 0.5
                     roid2.radius = random.random() * 0.5 + 0.5
                     roid1.position = self.moon.position + dr * (0.5 + self.moon.radius + 0.5)

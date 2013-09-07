@@ -10,6 +10,9 @@ class State:
     def on_mouse_press(*args, **kwargs):
         pass
 
+    def on_resize(self, width, height):
+        pass
+
     def on_draw(self):
         raise NotImplementedError()
 
