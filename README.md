@@ -1,16 +1,19 @@
-AegisLuna
-=========
+# Aegis Luna: Pyweek entry September 2013
 
-Game entry for pyweek September 2013. Protect Earth from incoming asteroids by ramming them with the Moon!
 
-#### Installation
+An alien race is bent on the destruction of humanity. To accomplish their goals, they are teleporting huge asteroids into Earth's gravitational field to fall upon the planet, rendering it inhospitable. Humanity is surprised and overwhelmed by this tactic, and Earth is doomed. People are attempting to escape in spacecraft, but the planet will be obliterated before all of humanity can hope to escape. 
 
-Install numpy (e.g., sudo pip install numpy)
+In a desperate attempt to delay the inevitable, antigrav mining rigs on the Moon are retrofitted to accelerate the Moon into the asteroids and destroy them.
 
-#### Run
+You are the pilot.
 
-python aegisluna.py
+#### How to play
 
-#### Controls
+Use the mouse and WASD to steer, and the spacebar to temporarily boost your speed. Earth's shields will gradually recharge, but if the planet is hit while the shields are too low, or if you ever hit the Earth with the Moon, it's curtains.
 
-Use the mouse to look around. WASD to move. Spacebar for speed boost. Hit ESC to exit.
+#### How to install & run Aegis Luna
+
+Install numpy: sudo pip install numpy
+
+Run aegisluna.py: python aegisluna.py
+
