@@ -46,6 +46,7 @@ class Game(State):
         self.moonTexture = pyglet.image.load("moon.png").get_mipmapped_texture()
         self.spaceTexture = pyglet.image.load("space.png").get_mipmapped_texture()
         self.roidTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
+        self.pointTexture = pyglet.image.load("point.png").get_mipmapped_texture()
 
     def buildAssets(self):
         self.sphereGeometry = buildSphere(32)
@@ -84,8 +85,8 @@ class Game(State):
         self.particles.append(p)
 
     def on_draw(self):
-        glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glEnable(GL_TEXTURE_2D)
         glShadeModel(GL_SMOOTH)
         glEnable(GL_LIGHTING)
@@ -155,16 +156,25 @@ class Game(State):
         glEnable(GL_LIGHTING)
 
         # Draw Particles
-        glLoadIdentity()
-        glDisable(GL_TEXTURE_2D)
+        glPointSize(4.0)
+        # glPointParameterfvEXT(GL_POINT_DISTANCE_ATTENUATION, vec(0.0, 1.0, 0.0))
+        glPointParameterf(GL_POINT_SIZE_MIN, 1.0)
+        glPointParameterf(GL_POINT_SIZE_MAX, 64.0)
+        glEnable(GL_POINT_SPRITE)
+        glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)
+        glEnable(GL_TEXTURE_2D)
         glDisable(GL_LIGHTING)
         glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)                                             
-        glPointSize(2.0)
+        glDepthMask(GL_FALSE)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE)                                             
+        glLoadIdentity()
+        glBindTexture(GL_TEXTURE_2D, self.pointTexture.id)
         for particle in self.particles:
             particle.particles.draw(GL_POINTS)
         glEnable(GL_LIGHTING)
         glEnable(GL_TEXTURE_2D)
+        glDisable(GL_POINT_SPRITE)
+        glDepthMask(GL_TRUE)
 
         # Draw GUI
         glDisable(GL_LIGHTING)
@@ -230,9 +240,9 @@ class Game(State):
                 if int(self.earthIntegrity) < 1:
                     self.al.activateApocalypse()
                     return
-                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 2000, 1000, -roid.velocity*0.5, 0.1)
-                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 1500, 1000, -roid.velocity*0.5, 0.1)
-                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 1], 1000, 1000, -roid.velocity*0.5, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 0, 0], 400, 1000, roid.velocity*0.0, 0.025)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 0], 400, 1000, roid.velocity*0.0, 0.025)
+                self.explode(roid.position[0], 0, roid.position[1], [1, 1, 1], 400, 1000, roid.velocity*0.0, 0.025)
             # Check for moon collision
             if numpy.linalg.norm(roid.position - self.moon.position) < roid.radius + self.moon.radius:
                 self.roids.remove(roid)
@@ -241,7 +251,7 @@ class Game(State):
                 dr = unit(roid.position - self.moon.position)
                 dm = unit(self.moon.velocity)
                 v = norm(self.moon.velocity) * dr * numpy.dot(dm, dr)
-                self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 1000, 500, v, 0.1)
+                self.explode(roid.position[0], 0, roid.position[1], [0.5, 0.25, 0], 200, 500, v, 0.1)
                 if roid.radius > 1.5:
                     roid1 = self.addRoid()
                     roid2 = self.addRoid()
