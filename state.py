@@ -4,8 +4,8 @@ class State:
     def __init__(self):
         pass
 
-    def update(self):
-        raise NotImplementedError()
+    def update(self, dt):
+        pass
 
     def on_mouse_press(*args, **kwargs):
         pass

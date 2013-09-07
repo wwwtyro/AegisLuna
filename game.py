@@ -37,26 +37,17 @@ class Game(State):
         self.camera = Camera()
         self.earthIntegrity = 100.0
         self.total_time = 0.0
-        self.loadAssets()
-        self.buildAssets()
+        self.initAssets()
         self.initWorld()
 
-    def loadAssets(self):
-        self.earthTexture = pyglet.image.load("earth.png").get_mipmapped_texture()
-        self.moonTexture = pyglet.image.load("moon.png").get_mipmapped_texture()
-        self.spaceTexture = pyglet.image.load("space.png").get_mipmapped_texture()
-        self.roidTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
-        self.pointTexture = pyglet.image.load("point.png").get_mipmapped_texture()
-
-    def buildAssets(self):
-        self.sphereGeometry = buildSphere(32)
-        self.roidGeometry = buildAsteroid(32)
+    def initAssets(self):
         self.scoreLabel = pyglet.text.Label('', font_size=18, bold=True, x=4.0, y=self.al.height, 
                                             color=(255,255,255,128), anchor_x='left', anchor_y='top')      
         self.integrityLabel = pyglet.text.Label('', font_size=18, bold=True, x=self.al.width-4.0, y=4.0, 
                                                 color=(255,0,0,128), anchor_x='right', anchor_y='bottom')      
         self.boostLabel = pyglet.text.Label('', font_size=18, bold=True, x=4.0, y=4.0, 
                                                 color=(0,255,255,128), anchor_x='left', anchor_y='bottom')      
+
 
     def initWorld(self):
         self.earth = Planetoid(numpy.array([0.,0.]), 10.0)
@@ -124,16 +115,16 @@ class Game(State):
         glTranslatef(self.earth.position[0], 0, self.earth.position[1])
         glScalef(self.earth.radius, self.earth.radius, self.earth.radius)
         glRotatef(self.earth.rotation, self.earth.axis[0], self.earth.axis[1], self.earth.axis[2])
-        glBindTexture(GL_TEXTURE_2D, self.earthTexture.id)
-        self.sphereGeometry.draw(GL_TRIANGLES)
+        glBindTexture(GL_TEXTURE_2D, self.al.earthTexture.id)
+        self.al.sphereGeometry.draw(GL_TRIANGLES)
 
         # Draw Moon
         glLoadIdentity()
         glTranslatef(self.moon.position[0], 0, self.moon.position[1])
         glScalef(self.moon.radius, self.moon.radius, self.moon.radius)
         glRotatef(self.moon.rotation, self.moon.axis[0], self.moon.axis[1], self.moon.axis[2])
-        glBindTexture(GL_TEXTURE_2D, self.moonTexture.id)
-        self.sphereGeometry.draw(GL_TRIANGLES)
+        glBindTexture(GL_TEXTURE_2D, self.al.moonTexture.id)
+        self.al.sphereGeometry.draw(GL_TRIANGLES)
 
         # Draw Roids
         for roid in self.roids:
@@ -141,23 +132,22 @@ class Game(State):
             glTranslatef(roid.position[0], 0, roid.position[1])
             glScalef(roid.radius, roid.radius, roid.radius)
             glRotatef(roid.rotation, roid.axis[0], roid.axis[1], roid.axis[2])
-            glBindTexture(GL_TEXTURE_2D, self.roidTexture.id)
-            self.roidGeometry.draw(GL_TRIANGLES)
+            glBindTexture(GL_TEXTURE_2D, self.al.roidTexture.id)
+            self.al.roidGeometry.draw(GL_TRIANGLES)
 
         # Draw Space
         glLoadIdentity()
         glTranslatef(camx, camy, camz)
         glScalef(19000,19000,19000)
-        glBindTexture(GL_TEXTURE_2D, self.spaceTexture.id)
+        glBindTexture(GL_TEXTURE_2D, self.al.spaceTexture.id)
         glDisable(GL_LIGHTING)
         glCullFace(GL_FRONT)
-        self.sphereGeometry.draw(GL_TRIANGLES)
+        self.al.sphereGeometry.draw(GL_TRIANGLES)
         glCullFace(GL_BACK)
         glEnable(GL_LIGHTING)
 
         # Draw Particles
         glPointSize(4.0)
-        # glPointParameterfvEXT(GL_POINT_DISTANCE_ATTENUATION, vec(0.0, 1.0, 0.0))
         glPointParameterf(GL_POINT_SIZE_MIN, 1.0)
         glPointParameterf(GL_POINT_SIZE_MAX, 64.0)
         glEnable(GL_POINT_SPRITE)
@@ -168,7 +158,7 @@ class Game(State):
         glDepthMask(GL_FALSE)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE)                                             
         glLoadIdentity()
-        glBindTexture(GL_TEXTURE_2D, self.pointTexture.id)
+        glBindTexture(GL_TEXTURE_2D, self.al.pointTexture.id)
         for particle in self.particles:
             particle.particles.draw(GL_POINTS)
         glEnable(GL_LIGHTING)

@@ -6,6 +6,7 @@ import pyglet
 from pyglet.gl import *
 
 from screens import *
+from util import *
 from game import Game
 
 class AegisLuna(pyglet.window.Window):
@@ -24,14 +25,18 @@ class AegisLuna(pyglet.window.Window):
         self.activateIntro()
 
     def prepareAssets(self):
+        self.earthTexture = pyglet.image.load("earth.png").get_mipmapped_texture()
+        self.moonTexture = pyglet.image.load("moon.png").get_mipmapped_texture()
+        self.spaceTexture = pyglet.image.load("space.png").get_mipmapped_texture()
+        self.roidTexture = pyglet.image.load("rock.png").get_mipmapped_texture()
+        self.pointTexture = pyglet.image.load("point.png").get_mipmapped_texture()
+        self.sphereGeometry = buildSphere(32)
+        self.roidGeometry = buildAsteroid(32)
         self.spaceSound = pyglet.resource.media('space.wav', streaming=False)
         self.spacePlayer = None
 
     def boom(self):
         pyglet.resource.media('boom.wav', streaming=False).play()
-
-    def bounce(self):
-        pyglet.resource.media('bounce.wav', streaming=False).play()
 
     def spaceOn(self):
         if self.spacePlayer is None:
@@ -111,8 +116,8 @@ class AegisLuna(pyglet.window.Window):
         
 
 def main():
-    # al = AegisLuna(fullscreen=True)
-    al = AegisLuna(fullscreen=False, width=1280, height=800)
+    al = AegisLuna(fullscreen=True)
+    # al = AegisLuna(fullscreen=False, width=1280, height=800)
     pyglet.app.run()
 
 
