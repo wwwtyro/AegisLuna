@@ -1,6 +1,5 @@
 # Aegis Luna: Pyweek entry September 2013
 
-
 An alien race is bent on the destruction of humanity. To accomplish their goals, they are teleporting huge asteroids into Earth's gravitational field to fall upon the planet, rendering it inhospitable. Humanity is surprised and overwhelmed by this tactic, and Earth is doomed. People are attempting to escape in spacecraft, but the planet will be obliterated before all of humanity can hope to escape. 
 
 In a desperate attempt to delay the inevitable, antigrav mining rigs on the Moon are retrofitted to accelerate the Moon into the asteroids and destroy them.
